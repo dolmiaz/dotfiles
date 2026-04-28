@@ -1,0 +1,27 @@
+# secrets
+.env
+*.env
+.env.*
+secrets/
+Secrets/
+private/
+local/
+*.local
+
+# keys / vpn
+*.pem
+*.key
+*.ovpn
+id_rsa*
+id_ed25519*
+
+# histories / generated
+*.history
+.zcompdump*
+.viminfo
+*.swp
+*.swo
+*.swn
+
+# OS
+.DS_Store
