@@ -1,0 +1,107 @@
+{
+
+    // ---------- Language ----------
+
+    "[tex]": {
+        // スニペット補完中にも補完を使えるようにする
+        "editor.suggest.snippetsPreventQuickSuggestions": false,
+        // インデント幅を2にする
+        "editor.tabSize": 2
+    },
+
+    "[latex]": {
+        // スニペット補完中にも補完を使えるようにする
+        "editor.suggest.snippetsPreventQuickSuggestions": false,
+        // インデント幅を2にする
+        "editor.tabSize": 2
+    },
+
+    "[bibtex]": {
+        // インデント幅を2にする
+        "editor.tabSize": 2
+    },
+
+
+    // ---------- LaTeX Workshop ----------
+
+    // 使用パッケージのコマンドや環境の補完を有効にする
+    "latex-workshop.intellisense.package.enabled": true,
+
+    // 生成ファイルを削除するときに対象とするファイル
+    "latex-workshop.latex.clean.fileTypes": [
+        "*.aux",
+        "*.bbl",
+        "*.blg",
+        "*.idx",
+        "*.ind",
+        "*.lof",
+        "*.lot",
+        "*.out",
+        "*.toc",
+        "*.acn",
+        "*.acr",
+        "*.alg",
+        "*.glg",
+        "*.glo",
+        "*.gls",
+        "*.ist",
+        "*.fls",
+        "*.log",
+        "*.fdb_latexmk",
+        "*.snm",
+        "*.nav",
+        "*.dvi",
+        "*.synctex.gz"
+    ],
+
+    
+    "latex-workshop.latex.outDir": "%DIR%/pdf", // :contentReference[oaicite:3]{index=3}
+
+    // ビルド後に自動クリーン（.fls 等を残さない）
+    "latex-workshop.latex.autoClean.run": "onBuilt", // :contentReference[oaicite:4]{index=4}
+    "latex-workshop.latex.clean.method": "command",
+    "latex-workshop.latex.clean.command": "bash",
+    // build/ から「*.log 以外」を全部消す（fls, fdb, aux, toc, dvi…等）
+    // ※log も消したいなら "! -name '*.log'" の部分を消してください
+    "latex-workshop.latex.clean.args": [
+        "-lc",
+        "find '%DIR%/build' -maxdepth 1 -type f ! -name '*.log' -exec rm -f {} +; rm -f '%DIR%/pdf'/*.synctex.gz; find '%DIR%/build' -mindepth 1 -type d -empty -delete"
+    ],
+
+    // レシピ：まずディレクトリ作成 → latexmk
+    "latex-workshop.latex.recipes": [
+        {
+        "name": "latexmk (split build/pdf)",
+        "tools": ["mkdir-build-pdf", "latexmk"]
+        }
+    ],
+
+    "latex-workshop.latex.tools": [
+        {
+        "name": "mkdir-build-pdf",
+        "command": "bash",
+        "args": ["-lc", "mkdir -p '%DIR%/build' '%DIR%/pdf'"]
+        },
+        {
+        "name": "latexmk",
+        "command": "/Library/TeX/texbin/latexmk",
+        "env": {
+            "PATH": "/Library/TeX/texbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+        },
+        "args": [
+            "-silent",
+            "-pdfdvi",
+            "-outdir=%DIR%/build",
+            "-auxdir=%DIR%/build",
+            "-out2dir=%DIR%/pdf",
+            "%DOC%"
+        ]
+        }
+    ],
+    "latex-workshop.latex.env": {
+         "PATH": "/Library/TeX/texbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+    },
+    "files.autoSave": "afterDelay",
+    "workbench.colorTheme": "Default High Contrast",
+}
+
