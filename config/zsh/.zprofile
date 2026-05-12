@@ -12,13 +12,19 @@ mkdir -p \
   "$XDG_CONFIG_HOME/ipython" \
   "$XDG_CONFIG_HOME/matplotlib" \
   "$XDG_CONFIG_HOME/npm" \
+  "$XDG_CONFIG_HOME/prettier" \
   "$XDG_CONFIG_HOME/python" \
+  "$XDG_CONFIG_HOME/vim" \
+  "$XDG_CONFIG_HOME/zsh" \
   "$XDG_CACHE_HOME/npm" \
+  "$XDG_CACHE_HOME/vim" \
+  "$XDG_DATA_HOME/vim" \
   "$XDG_STATE_HOME/zsh" \
   "$XDG_STATE_HOME/less" \
   "$XDG_STATE_HOME/node" \
   "$XDG_STATE_HOME/sqlite" \
-  "$XDG_STATE_HOME/psql"
+  "$XDG_STATE_HOME/psql" \
+  "$XDG_STATE_HOME/vim"
 
 chmod 700 "$XDG_RUNTIME_DIR" 2>/dev/null || true
 
@@ -57,6 +63,10 @@ fi
 # ----------------------------------------------------------
 path_prepend_if_exists "$HOME/.local/bin"
 path_prepend_if_exists "$HOME/bin"
+
+cargo_home="${CARGO_HOME:-$HOME/.cargo}"
+path_prepend_if_exists "$cargo_home/bin"
+unset cargo_home
 
 # ----------------------------------------------------------
 # JetBrains Toolbox

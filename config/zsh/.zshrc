@@ -106,7 +106,12 @@ setopt no_beep
 # ----------------------------------------------------------
 # History
 # ----------------------------------------------------------
-export HISTFILE="${HISTFILE:-$XDG_STATE_HOME/zsh/history}"
+if [[ -z "${HISTFILE:-}" || "$HISTFILE" = "$HOME/.zsh_history" || "$HISTFILE" = "$ZDOTDIR/.zsh_history" ]]; then
+  export HISTFILE="$XDG_STATE_HOME/zsh/history"
+else
+  export HISTFILE
+fi
+
 export HISTSIZE="${HISTSIZE:-50000}"
 export SAVEHIST="${SAVEHIST:-50000}"
 
@@ -144,7 +149,7 @@ zstyle ':completion:*' list-colors "${LS_COLORS:-}"
 # ----------------------------------------------------------
 # fzf
 # ----------------------------------------------------------
-if command -v fzf >/dev/null 2>&1; then
+if [[ -t 0 && -t 1 ]] && command -v fzf >/dev/null 2>&1; then
   if fzf --zsh >/dev/null 2>&1; then
     source <(fzf --zsh)
   fi

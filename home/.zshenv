@@ -1,75 +1,10 @@
-# ----------------------------------------------------------
-# XDG Base Directory
-# ----------------------------------------------------------
-export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
-export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
-export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
-export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+# ~/.zshenv
+#
+# Keep the only zsh file that zsh must read from $HOME small, then load the
+# real XDG-based configuration from ~/.config/zsh.
 
-# macOS does not provide /run/user/$UID.
-export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-${${TMPDIR:-/tmp}%/}/xdg-runtime-$UID}"
+export ZDOTDIR="${ZDOTDIR:-$HOME/.config/zsh}"
 
-# ----------------------------------------------------------
-# macOS
-# ----------------------------------------------------------
-if [[ "$OSTYPE" == darwin* ]]; then
-  export SHELL_SESSIONS_DISABLE="${SHELL_SESSIONS_DISABLE:-1}"
+if [[ -r "$ZDOTDIR/.zshenv" ]]; then
+  source "$ZDOTDIR/.zshenv"
 fi
-
-# ----------------------------------------------------------
-# XDG-aware Tools
-# ----------------------------------------------------------
-export DOCKER_CONFIG="${DOCKER_CONFIG:-$XDG_CONFIG_HOME/docker}"
-export JUPYTER_CONFIG_DIR="${JUPYTER_CONFIG_DIR:-$XDG_CONFIG_HOME/jupyter}"
-export IPYTHONDIR="${IPYTHONDIR:-$XDG_CONFIG_HOME/ipython}"
-export MPLCONFIGDIR="${MPLCONFIGDIR:-$XDG_CONFIG_HOME/matplotlib}"
-
-# ----------------------------------------------------------
-# Shell History
-# ----------------------------------------------------------
-export HISTFILE="${HISTFILE:-$XDG_STATE_HOME/zsh/history}"
-export LESSHISTFILE="${LESSHISTFILE:-$XDG_STATE_HOME/less/history}"
-
-# ----------------------------------------------------------
-# CLI History
-# ----------------------------------------------------------
-export NODE_REPL_HISTORY="${NODE_REPL_HISTORY:-$XDG_STATE_HOME/node/repl_history}"
-export SQLITE_HISTORY="${SQLITE_HISTORY:-$XDG_STATE_HOME/sqlite/history}"
-export PSQL_HISTORY="${PSQL_HISTORY:-$XDG_STATE_HOME/psql/history}"
-
-# ----------------------------------------------------------
-# npm
-# ----------------------------------------------------------
-export NPM_CONFIG_USERCONFIG="${NPM_CONFIG_USERCONFIG:-$XDG_CONFIG_HOME/npm/npmrc}"
-export NPM_CONFIG_CACHE="${NPM_CONFIG_CACHE:-$XDG_CACHE_HOME/npm}"
-
-# ----------------------------------------------------------
-# Language Managers
-# ----------------------------------------------------------
-export RBENV_ROOT="${RBENV_ROOT:-$XDG_DATA_HOME/rbenv}"
-export NVM_DIR="${NVM_DIR:-$XDG_DATA_HOME/nvm}"
-
-# ----------------------------------------------------------
-# Python
-# ----------------------------------------------------------
-if [[ -z "${PYTHONSTARTUP:-}" ]]; then
-  if [[ -r "$XDG_CONFIG_HOME/python/pythonrc" ]]; then
-    export PYTHONSTARTUP="$XDG_CONFIG_HOME/python/pythonrc"
-  elif [[ -r "$HOME/python/pythonrc" ]]; then
-    export PYTHONSTARTUP="$HOME/python/pythonrc"
-  else
-    export PYTHONSTARTUP="$XDG_CONFIG_HOME/python/pythonrc"
-  fi
-fi
-
-# ----------------------------------------------------------
-# Pager
-# ----------------------------------------------------------
-export PAGER="${PAGER:-less}"
-export MANPAGER="${MANPAGER:-less -R}"
-export LESS="${LESS:--F -R -X -i}"
-
-# ----------------------------------------------------------
-# Terminal
-# ----------------------------------------------------------
-export COLORTERM="${COLORTERM:-truecolor}"
