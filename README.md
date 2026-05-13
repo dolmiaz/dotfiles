@@ -1,30 +1,73 @@
 # dotfiles
 
-Ubuntu / Debian / WSL 向けの個人用 dotfiles と初期セットアップです。
+Ubuntu / Debian / WSL を主対象にした個人用 dotfiles です。
+
+`install.sh` はこのリポジトリを clone したディレクトリ内で実行する前提です。`home/` と `config/` 以下のファイルを `$HOME` と `$HOME/.config` に配置し、必要に応じて CLI ツールや Vim plugin も導入します。
 
 ## 対象環境
 
-- `apt-get` が使える Ubuntu / Debian 系環境
+- Ubuntu / Debian 系環境
 - WSL Ubuntu
+- `sudo` が使える通常ユーザー
 
-macOS 用の設定も一部含みますが、`install.sh` は `apt-get` 前提です。
+macOS 向けの分岐も一部設定ファイルに含みますが、依存パッケージの自動導入は `apt-get` が使える環境向けです。`apt-get` が無い場合、パッケージ導入は警告してスキップされます。
 
 ## インストール
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/dolmiaz/dotfiles/main/install.sh | bash
+git clone https://github.com/dolmiaz/dotfiles.git ~/dotfiles
+cd ~/dotfiles
+bash install.sh
 ```
 
-または clone して実行します。
+デフォルトでは symlink で配置します。実体コピーで配置したい場合は `--copy` を指定します。
 
 ```sh
-git clone https://github.com/dolmiaz/dotfiles.git ~/dotfiles
-bash ~/dotfiles/install.sh
+bash install.sh --copy
 ```
 
-`install.sh` は実行ディレクトリに `setup-dotfiles.sh` を生成し、そのまま実行します。
+変更内容だけ確認する場合は `--dry-run` を使います。
+
+```sh
+bash install.sh --dry-run
+```
+
+既存ファイルがある場合は上書きせず、`~/.dotfiles-backup/YYYYmmddHHMMSS/` 以下に退避してから配置します。
+
+## オプション
+
+```text
+bash install.sh [options]
+
+Options:
+  --link          symlink で配置する。デフォルト
+  --copy          実体コピーで配置する
+  --dry-run       変更内容だけ表示する
+  --no-deps       apt / starship / zoxide / zsh plugin を入れない
+  --no-vim-plug   vim-plug / Vim plugin を入れない
+  --no-chsh       default shell を zsh に変えない
+  -h, --help      ヘルプ表示
+```
+
+環境変数:
+
+```sh
+DOTFILES_TARGET_HOME=/path/to/home
+DOTFILES_BACKUP_DIR=/path/to/backup
+```
+
+- `DOTFILES_TARGET_HOME`: 配置先の home directory。デフォルトは `$HOME`
+- `DOTFILES_BACKUP_DIR`: 既存ファイルの退避先。デフォルトは `$HOME/.dotfiles-backup/<timestamp>`
+
+例:
+
+```sh
+DOTFILES_TARGET_HOME="$HOME/test-home" bash install.sh --copy --no-deps --no-chsh
+```
 
 ## インストールされるもの
+
+`--no-deps` を付けない場合、次を導入します。
 
 apt で入るもの:
 
@@ -41,84 +84,91 @@ apt で入るもの:
 - `software-properties-common`
 - `eza`
 
+`eza` が apt 標準リポジトリに無い場合は、eza の apt repository を追加して導入します。
+
 apt 以外で入るもの:
 
 - `starship`
 - `zoxide`
-- `vim-plug`
-- Vim plugin
 - `zsh-autosuggestions`
 - `zsh-syntax-highlighting`
 
-その他の変更:
+`zsh-autosuggestions` と `zsh-syntax-highlighting` は `/usr/local/share/` 以下に clone / update します。
 
-- dotfiles リポジトリを clone / update
-- dotfiles を `$HOME` と `$HOME/.config` に配置
-- `~/.config/latexmk/latexmkrc` を削除
-- `~/.config/zsh/.zshrc` に Ubuntu / WSL 用の plugin loader を追記
-- default shell を `zsh` に変更
+`--no-vim-plug` を付けない場合、次を導入します。
 
-## 配置
+- `vim-plug`
+- `config/vim/vimrc` に定義された Vim plugin
 
-デフォルトではリポジトリを `~/dotfiles` に置き、dotfiles はコピーで配置します。
+`--no-chsh` を付けない場合、default shell を `zsh` に変更します。
+
+## 配置されるファイル
+
+リポジトリ内の配置:
 
 ```text
 ~/dotfiles/
   home/
-    .zshenv
     .vimrc
+    .zshenv
   config/
-    git/config
-    git/ignore
-    npm/npmrc
-    prettier/prettierrc
-    prettier/prettierignore
+    git/
+      ignore
+    latexmk/
+      latexmkrc
+    npm/
+      npmrc
+    prettier/
+      prettierignore
+      prettierrc
     starship.toml
-    vim/vimrc
-    vscode/setting.json
-    zsh/.zshenv
-    zsh/.zprofile
-    zsh/.zshrc
+    vim/
+      vimrc
+    vscode/
+      setting.json
+    zsh/
+      .zprofile
+      .zshenv
+      .zshrc
+  install.sh
 ```
 
 反映先:
 
 ```text
-~/.zshenv
 ~/.vimrc
-~/.config/git/config
+~/.zshenv
 ~/.config/git/ignore
+~/.config/latexmk/latexmkrc
 ~/.config/npm/npmrc
-~/.config/prettier/prettierrc
 ~/.config/prettier/prettierignore
+~/.config/prettier/prettierrc
 ~/.config/starship.toml
 ~/.config/vim/vimrc
 ~/.config/vscode/setting.json
-~/.config/zsh/.zshenv
 ~/.config/zsh/.zprofile
+~/.config/zsh/.zshenv
 ~/.config/zsh/.zshrc
 ```
 
-`~/.zshenv` は `~/.config/zsh/.zshenv` を読み込む shim です。zsh の実体設定は XDG Base Directory に寄せています。
+`~/.zshenv` と `~/.vimrc` は shim です。実体の zsh / Vim 設定は XDG Base Directory に寄せて、`~/.config/zsh/` と `~/.config/vim/` から読み込みます。
 
-## 環境変数
+## 公開対象外のローカル設定
 
-実行時に次の環境変数で挙動を変更できます。
+`config/git/config` は `.gitignore` で除外しています。Git のユーザー名、メールアドレス、署名鍵、1Password 連携など個人情報を含みやすいため、GitHub では公開しません。
 
-```sh
-DOTFILES_REPO=https://github.com/dolmiaz/dotfiles.git
-DOTFILES_DIR=$HOME/dotfiles
-INSTALL_MODE=copy
-REMOVE_LATEXMK=1
-```
+必要な場合は各自の環境で `~/.config/git/config` を作成してください。
 
-- `DOTFILES_REPO`: clone するリポジトリ
-- `DOTFILES_DIR`: clone 先
-- `INSTALL_MODE`: `copy` または `link`
-- `REMOVE_LATEXMK`: `1` なら `~/.config/latexmk/latexmkrc` を削除
+## 再実行
 
-例:
+`install.sh` は再実行できます。
+
+- 既に同じ symlink がある場合はスキップします。
+- 既存ファイルが違う場合は backup directory に退避します。
+- `/usr/local/share/` 以下の zsh plugin は既存 clone があれば `git pull --ff-only` します。
+
+設定を現在の shell にすぐ反映する場合:
 
 ```sh
-DOTFILES_DIR="$HOME/src/dotfiles" INSTALL_MODE=link bash install.sh
+exec zsh
 ```
