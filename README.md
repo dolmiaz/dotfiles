@@ -1,96 +1,124 @@
 # dotfiles
 
-macOS / Ubuntu / WSL で使う個人用 dotfiles です。ホーム直下に置く必要がある最小限の shim だけを `home/` に置き、それ以外はできるだけ XDG Base Directory に寄せて `config/` で管理します。
+Ubuntu / Debian / WSL 向けの個人用 dotfiles と初期セットアップです。
 
-## 構成
+## 対象環境
 
-```text
-home/
-  .zshenv                    ~/.zshenv から ~/.config/zsh/.zshenv を読む shim
-  .vimrc                     ~/.config/vim/vimrc を読む Vim 用 shim
+- `apt-get` が使える Ubuntu / Debian 系環境
+- WSL Ubuntu
 
-config/
-  zsh/.zshenv                XDG_*、履歴、npm、言語ツールなどの環境変数
-  zsh/.zprofile              ログインシェル用の PATH、Homebrew、EDITOR、GPG 設定
-  zsh/.zshrc                 補完、履歴、alias、fzf、zoxide、direnv、starship など
-  vim/vimrc                  Vim 設定と plugin 設定
-  git/ignore                 global gitignore
-  npm/npmrc                  npm user config
-  prettier/prettierrc        Prettier 設定
-  prettier/prettierignore    Prettier ignore
-  latexmk/latexmkrc          latexmk 設定
-  vscode/setting.json        VS Code user settings
-  starship.toml              Starship prompt
-```
+macOS 用の設定も一部含みますが、`install.sh` は `apt-get` 前提です。
 
 ## インストール
 
-まず dry-run で変更内容を確認します。
-
 ```sh
-git clone git@github.com:dolmiaz/dotfiles.git ~/dotfiles
-cd ~/dotfiles
-./install.sh --dry-run
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/dolmiaz/dotfiles/main/install.sh | bash
 ```
 
-デフォルトでは symlink を作ります。既存ファイルや既存 symlink がある場合は、上書きせず `~/.dotfiles-backup/<timestamp>/` に退避してから配置します。
-
-実体コピーで配置したい場合:
+または clone して実行します。
 
 ```sh
-./install.sh --copy
+git clone https://github.com/dolmiaz/dotfiles.git ~/dotfiles
+bash ~/dotfiles/install.sh
 ```
 
-別のホームディレクトリ相当に展開したい場合:
+`install.sh` は実行ディレクトリに `setup-dotfiles.sh` を生成し、そのまま実行します。
 
-```sh
-DOTFILES_TARGET_HOME=/tmp/dotfiles-home ./install.sh --dry-run
-DOTFILES_TARGET_HOME=/tmp/dotfiles-home ./install.sh
-```
+## インストールされるもの
 
-バックアップ先を明示したい場合:
+apt で入るもの:
 
-```sh
-DOTFILES_BACKUP_DIR=/tmp/dotfiles-backup ./install.sh
-```
-
-## install.sh の動き
-
-- `home/` 配下のファイルを `$HOME/` に配置します。
-- `config/` 配下のファイルを `$HOME/.config/` に配置します。
-- `.DS_Store` は配置対象から除外します。
-- 同じ symlink が既にある場合は何もしません。
-- 旧構成でこのリポジトリの `home/.zprofile` / `home/.zshrc` を指していた symlink が残っている場合は、バックアップへ移動します。
-
-## 前提ツール
-
-最低限あるとよいもの:
-
-- `zsh`
+- `ca-certificates`
+- `curl`
+- `wget`
 - `git`
 - `vim`
+- `zsh`
+- `direnv`
+- `fzf`
+- `gpg`
+- `unzip`
+- `software-properties-common`
+- `eza`
 
-設定内で存在すれば使うもの:
+apt 以外で入るもの:
 
 - `starship`
-- `fzf`
 - `zoxide`
-- `direnv`
-- `eza`
-- `rbenv`
-- `nvm`
-- `conda`
+- `vim-plug`
+- Vim plugin
 - `zsh-autosuggestions`
 - `zsh-syntax-highlighting`
 
-macOS では Homebrew が `/opt/homebrew` または `/usr/local` にあれば PATH に反映します。Ubuntu / WSL では apt、Homebrew on Linux、mise、asdf など、環境に合う方法で必要なツールを入れてください。
+その他の変更:
 
-## 更新
+- dotfiles リポジトリを clone / update
+- dotfiles を `$HOME` と `$HOME/.config` に配置
+- `~/.config/latexmk/latexmkrc` を削除
+- `~/.config/zsh/.zshrc` に Ubuntu / WSL 用の plugin loader を追記
+- default shell を `zsh` に変更
 
-symlink で配置している場合は、リポジトリを更新すると設定にも反映されます。
+## 配置
+
+デフォルトではリポジトリを `~/dotfiles` に置き、dotfiles はコピーで配置します。
+
+```text
+~/dotfiles/
+  home/
+    .zshenv
+    .vimrc
+  config/
+    git/config
+    git/ignore
+    npm/npmrc
+    prettier/prettierrc
+    prettier/prettierignore
+    starship.toml
+    vim/vimrc
+    vscode/setting.json
+    zsh/.zshenv
+    zsh/.zprofile
+    zsh/.zshrc
+```
+
+反映先:
+
+```text
+~/.zshenv
+~/.vimrc
+~/.config/git/config
+~/.config/git/ignore
+~/.config/npm/npmrc
+~/.config/prettier/prettierrc
+~/.config/prettier/prettierignore
+~/.config/starship.toml
+~/.config/vim/vimrc
+~/.config/vscode/setting.json
+~/.config/zsh/.zshenv
+~/.config/zsh/.zprofile
+~/.config/zsh/.zshrc
+```
+
+`~/.zshenv` は `~/.config/zsh/.zshenv` を読み込む shim です。zsh の実体設定は XDG Base Directory に寄せています。
+
+## 環境変数
+
+実行時に次の環境変数で挙動を変更できます。
 
 ```sh
-cd ~/dotfiles
-git pull
+DOTFILES_REPO=https://github.com/dolmiaz/dotfiles.git
+DOTFILES_DIR=$HOME/dotfiles
+INSTALL_MODE=copy
+REMOVE_LATEXMK=1
+```
+
+- `DOTFILES_REPO`: clone するリポジトリ
+- `DOTFILES_DIR`: clone 先
+- `INSTALL_MODE`: `copy` または `link`
+- `REMOVE_LATEXMK`: `1` なら `~/.config/latexmk/latexmkrc` を削除
+
+例:
+
+```sh
+DOTFILES_DIR="$HOME/src/dotfiles" INSTALL_MODE=link bash install.sh
 ```
