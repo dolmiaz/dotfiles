@@ -153,12 +153,6 @@ apt 以外で入るもの:
 
 `~/.zshenv` と `~/.vimrc` は shim です。実体の zsh / Vim 設定は XDG Base Directory に寄せて、`~/.config/zsh/` と `~/.config/vim/` から読み込みます。
 
-## 公開対象外のローカル設定
-
-`config/git/config` は `.gitignore` で除外しています。Git のユーザー名、メールアドレス、署名鍵、1Password 連携など個人情報を含みやすいため、GitHub では公開しません。
-
-必要な場合は各自の環境で `~/.config/git/config` を作成してください。
-
 ## 再実行
 
 `install.sh` は再実行できます。
