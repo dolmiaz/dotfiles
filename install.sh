@@ -8,7 +8,7 @@ INSTALL_DEPS=1
 INSTALL_VIM_PLUG=1
 SET_DEFAULT_ZSH=1
 
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 TARGET_HOME="${DOTFILES_TARGET_HOME:-$HOME}"
 BACKUP_DIR="${DOTFILES_BACKUP_DIR:-$TARGET_HOME/.dotfiles-backup/$(date +%Y%m%d%H%M%S)}"
 
@@ -48,7 +48,7 @@ Options:
   --link          symlink で配置する。デフォルト
   --copy          実体コピーで配置する
   --dry-run       変更内容だけ表示する
-  --no-deps       apt / starship / zoxide / zsh plugin を入れない
+  --no-deps       apt / brew / starship / zoxide / zsh plugin を入れない
   --no-vim-plug   vim-plug / Vim plugin を入れない
   --no-chsh       default shell を zsh に変えない
   -h, --help      ヘルプ表示
@@ -108,7 +108,9 @@ fi
 [[ -d "$TARGET_HOME" ]] || die "TARGET_HOME が見つかりません: $TARGET_HOME"
 
 export DEBIAN_FRONTEND=noninteractive
-export PATH="$TARGET_HOME/.local/bin:/usr/local/bin:$PATH"
+export PATH="$TARGET_HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+OS_NAME="$(uname -s)"
 
 backup_existing() {
   local dst="$1"
@@ -118,7 +120,7 @@ backup_existing() {
   rel="${dst#$TARGET_HOME/}"
   bak="$BACKUP_DIR/$rel"
 
-  mkdir -p "$(dirname "$bak")"
+  run mkdir -p "$(dirname "$bak")"
 
   log "backup: $dst -> $bak"
   run mv "$dst" "$bak"
@@ -131,18 +133,46 @@ same_symlink() {
   [[ -L "$dst" ]] || return 1
 
   local resolved
-  resolved="$(readlink -f -- "$dst" 2>/dev/null || true)"
+  resolved="$(resolve_path "$dst" 2>/dev/null || true)"
 
   [[ "$resolved" == "$src" ]]
+}
+
+resolve_path() {
+  local path="$1"
+  local dir
+  local base
+
+  if [[ -d "$path" ]]; then
+    (cd -P "$path" && pwd -P)
+    return
+  fi
+
+  dir="$(dirname "$path")"
+  base="$(basename "$path")"
+
+  if [[ -L "$path" ]]; then
+    local target
+    target="$(readlink "$path")"
+
+    if [[ "$target" = /* ]]; then
+      resolve_path "$target"
+    else
+      resolve_path "$dir/$target"
+    fi
+    return
+  fi
+
+  printf '%s/%s\n' "$(cd -P "$dir" && pwd -P)" "$base"
 }
 
 place_file() {
   local src="$1"
   local dst="$2"
 
-  src="$(readlink -f -- "$src")"
+  src="$(resolve_path "$src")"
 
-  mkdir -p "$(dirname "$dst")"
+  run mkdir -p "$(dirname "$dst")"
 
   if [[ -e "$dst" || -L "$dst" ]]; then
     if [[ "$MODE" == "link" ]] && same_symlink "$src" "$dst"; then
@@ -229,6 +259,58 @@ install_apt_deps() {
   fi
 }
 
+setup_homebrew_path() {
+  have brew && return
+
+  if [[ -x /opt/homebrew/bin/brew ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [[ -x /usr/local/bin/brew ]]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+  fi
+}
+
+install_brew_deps() {
+  setup_homebrew_path
+
+  have brew || {
+    warn "Homebrew が見つからないので brew パッケージ導入をスキップします"
+    return
+  }
+
+  log "brew パッケージをインストール中"
+
+  run brew install \
+    ca-certificates \
+    curl \
+    wget \
+    git \
+    vim \
+    zsh \
+    direnv \
+    fzf \
+    gnupg \
+    unzip \
+    eza \
+    starship \
+    zoxide \
+    zsh-autosuggestions \
+    zsh-syntax-highlighting
+}
+
+install_deps() {
+  if have apt-get; then
+    install_apt_deps
+    return
+  fi
+
+  if [[ "$OS_NAME" == "Darwin" ]]; then
+    install_brew_deps
+    return
+  fi
+
+  warn "対応している package manager が見つからないのでパッケージ導入をスキップします"
+}
+
 install_starship() {
   if have starship; then
     log "starship は既にあります: $(command -v starship)"
@@ -281,8 +363,20 @@ clone_or_update_root() {
 }
 
 install_zsh_plugins() {
-  # config/zsh/.zshrc は /usr/local/share/zsh-autosuggestions と
-  # /usr/local/share/zsh-syntax-highlighting を読むので、そこへ入れる。
+  setup_homebrew_path
+
+  if have brew; then
+    local brew_prefix
+    brew_prefix="$(brew --prefix)"
+
+    if [[ -r "$brew_prefix/share/zsh-autosuggestions/zsh-autosuggestions.zsh" &&
+          -r "$brew_prefix/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]]; then
+      log "zsh plugin は Homebrew のものを使います: $brew_prefix/share"
+      return
+    fi
+  fi
+
+  # config/zsh/.zshrc は /usr/local/share も読むので、fallback としてそこへ入れる。
   clone_or_update_root \
     https://github.com/zsh-users/zsh-autosuggestions \
     /usr/local/share/zsh-autosuggestions
@@ -320,6 +414,22 @@ install_vim_plug_and_plugins() {
   fi
 }
 
+current_login_shell() {
+  local user_name="$1"
+
+  if have getent; then
+    getent passwd "$user_name" 2>/dev/null | awk -F: '{print $7}' || true
+    return
+  fi
+
+  if [[ "$OS_NAME" == "Darwin" ]] && have dscl; then
+    dscl . -read "/Users/$user_name" UserShell 2>/dev/null | awk '{print $2}' || true
+    return
+  fi
+
+  awk -F: -v user="$user_name" '$1 == user {print $7}' /etc/passwd 2>/dev/null || true
+}
+
 set_default_shell_to_zsh() {
   [[ "$TARGET_HOME" == "$HOME" ]] || {
     warn "TARGET_HOME が現在の HOME と違うので chsh はスキップします"
@@ -348,7 +458,8 @@ set_default_shell_to_zsh() {
   fi
 
   local current_shell
-  current_shell="$(getent passwd "$user_name" | awk -F: '{print $7}')"
+  current_shell="$(current_login_shell "$user_name")"
+  current_shell="${current_shell:-${SHELL:-}}"
 
   if [[ "$current_shell" == "$zsh_path" ]]; then
     log "default shell は既に zsh です: $zsh_path"
@@ -359,14 +470,19 @@ set_default_shell_to_zsh() {
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
     log "dry-run: chsh -s $zsh_path $user_name"
+  elif "${SUDO[@]}" chsh -s "$zsh_path" "$user_name"; then
+    return
+  elif [[ "$OS_NAME" == "Darwin" ]]; then
+    die "chsh に失敗しました"
+  elif have usermod; then
+    "${SUDO[@]}" usermod -s "$zsh_path" "$user_name"
   else
-    "${SUDO[@]}" chsh -s "$zsh_path" "$user_name" ||
-      "${SUDO[@]}" usermod -s "$zsh_path" "$user_name"
+    die "chsh に失敗し、usermod も見つかりません"
   fi
 }
 
 verify() {
-  [[ "$TARGET_HOME" == "$HOME" ]] || return
+  [[ "$TARGET_HOME" == "$HOME" ]] || return 0
 
   log "確認"
 
@@ -393,7 +509,7 @@ main() {
   log "mode: $MODE"
 
   if [[ "$INSTALL_DEPS" -eq 1 ]]; then
-    install_apt_deps
+    install_deps
     install_starship
     install_zoxide
     install_zsh_plugins
@@ -415,7 +531,11 @@ main() {
 
   log "完了"
   log "今すぐ反映するなら: exec zsh"
-  log "WSLを開き直すと default shell の変更も反映されます"
+  if [[ "$OS_NAME" == "Darwin" ]]; then
+    log "Terminal を開き直すと default shell の変更も反映されます"
+  else
+    log "WSL / shell を開き直すと default shell の変更も反映されます"
+  fi
 }
 
 main "$@"

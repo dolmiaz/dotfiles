@@ -1,6 +1,6 @@
 # dotfiles
 
-Ubuntu / Debian / WSL を主対象にした個人用 dotfiles です。
+Ubuntu / Debian / WSL / macOS を対象にした個人用 dotfiles です。
 
 `install.sh` はこのリポジトリを clone したディレクトリ内で実行する前提です。`home/` と `config/` 以下のファイルを `$HOME` と `$HOME/.config` に配置し、必要に応じて CLI ツールや Vim plugin も導入します。
 
@@ -8,9 +8,10 @@ Ubuntu / Debian / WSL を主対象にした個人用 dotfiles です。
 
 - Ubuntu / Debian 系環境
 - WSL Ubuntu
+- macOS
 - `sudo` が使える通常ユーザー
 
-macOS 向けの分岐も一部設定ファイルに含みますが、依存パッケージの自動導入は `apt-get` が使える環境向けです。`apt-get` が無い場合、パッケージ導入は警告してスキップされます。
+Linux では `apt-get`、macOS では Homebrew を使って依存パッケージを導入します。対応する package manager が無い場合、パッケージ導入は警告してスキップされます。
 
 ## インストール
 
@@ -43,7 +44,7 @@ Options:
   --link          symlink で配置する。デフォルト
   --copy          実体コピーで配置する
   --dry-run       変更内容だけ表示する
-  --no-deps       apt / starship / zoxide / zsh plugin を入れない
+  --no-deps       apt / brew / starship / zoxide / zsh plugin を入れない
   --no-vim-plug   vim-plug / Vim plugin を入れない
   --no-chsh       default shell を zsh に変えない
   -h, --help      ヘルプ表示
@@ -69,7 +70,7 @@ DOTFILES_TARGET_HOME="$HOME/test-home" bash install.sh --copy --no-deps --no-chs
 
 `--no-deps` を付けない場合、次を導入します。
 
-apt で入るもの:
+apt / brew 共通で入るもの:
 
 - `ca-certificates`
 - `curl`
@@ -79,14 +80,25 @@ apt で入るもの:
 - `zsh`
 - `direnv`
 - `fzf`
-- `gpg`
 - `unzip`
-- `software-properties-common`
 - `eza`
+
+apt のみ:
+
+- `gpg`
+- `software-properties-common`
+
+brew のみ:
+
+- `gnupg`
+- `starship`
+- `zoxide`
+- `zsh-autosuggestions`
+- `zsh-syntax-highlighting`
 
 `eza` が apt 標準リポジトリに無い場合は、eza の apt repository を追加して導入します。
 
-apt 以外で入るもの:
+apt 環境で apt 以外から入るもの:
 
 - `starship`
 - `zoxide`
@@ -94,6 +106,7 @@ apt 以外で入るもの:
 - `zsh-syntax-highlighting`
 
 `zsh-autosuggestions` と `zsh-syntax-highlighting` は `/usr/local/share/` 以下に clone / update します。
+macOS で Homebrew から導入済みの場合は、Homebrew 配下の plugin をそのまま使います。
 
 `--no-vim-plug` を付けない場合、次を導入します。
 
