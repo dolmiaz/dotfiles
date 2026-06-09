@@ -48,7 +48,7 @@ Options:
   --link          symlink で配置する。デフォルト
   --copy          実体コピーで配置する
   --dry-run       変更内容だけ表示する
-  --no-deps       apt / brew / starship / zoxide / zsh plugin を入れない
+  --no-deps       apt / dnf / yum / brew / starship / zoxide / zsh plugin を入れない
   --no-vim-plug   vim-plug / Vim plugin を入れない
   --no-chsh       default shell を zsh に変えない
   -h, --help      ヘルプ表示
@@ -259,6 +259,64 @@ install_apt_deps() {
   fi
 }
 
+redhat_package_available() {
+  local manager="$1"
+  local pkg="$2"
+
+  if [[ "$manager" == "dnf" ]]; then
+    dnf -q list --available "$pkg" >/dev/null 2>&1 ||
+      dnf -q list --installed "$pkg" >/dev/null 2>&1
+    return
+  fi
+
+  yum -q list available "$pkg" >/dev/null 2>&1 ||
+    yum -q list installed "$pkg" >/dev/null 2>&1
+}
+
+install_redhat_optional_pkg() {
+  local manager="$1"
+  local pkg="$2"
+
+  if have "$pkg"; then
+    return
+  fi
+
+  if redhat_package_available "$manager" "$pkg"; then
+    run "${SUDO[@]}" "$manager" install -y "$pkg"
+  else
+    warn "$pkg は $manager の標準リポジトリに見つからないのでスキップします"
+  fi
+}
+
+install_redhat_deps() {
+  local manager
+
+  if have dnf; then
+    manager="dnf"
+  elif have yum; then
+    manager="yum"
+  else
+    warn "dnf / yum が見つからないので Red Hat 系パッケージ導入をスキップします"
+    return
+  fi
+
+  log "$manager パッケージをインストール中"
+
+  run "${SUDO[@]}" "$manager" install -y \
+    ca-certificates \
+    curl \
+    wget \
+    git \
+    vim-enhanced \
+    zsh \
+    gnupg2 \
+    unzip
+
+  install_redhat_optional_pkg "$manager" direnv
+  install_redhat_optional_pkg "$manager" fzf
+  install_redhat_optional_pkg "$manager" eza
+}
+
 setup_homebrew_path() {
   have brew && return
 
@@ -300,6 +358,11 @@ install_brew_deps() {
 install_deps() {
   if have apt-get; then
     install_apt_deps
+    return
+  fi
+
+  if have dnf || have yum; then
+    install_redhat_deps
     return
   fi
 

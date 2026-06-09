@@ -1,17 +1,18 @@
 # dotfiles
 
-Ubuntu / Debian / WSL / macOS を対象にした個人用 dotfiles です。
+Ubuntu / Debian / Red Hat 系 Linux / WSL / macOS を対象にした個人用 dotfiles です。
 
 `install.sh` はこのリポジトリを clone したディレクトリ内で実行する前提です。`home/` と `config/` 以下のファイルを `$HOME` と `$HOME/.config` に配置し、必要に応じて CLI ツールや Vim plugin も導入します。
 
 ## 対象環境
 
 - Ubuntu / Debian 系環境
+- Red Hat 系環境（RHEL / CentOS / Rocky Linux / AlmaLinux / Fedora）
 - WSL Ubuntu
 - macOS
 - `sudo` が使える通常ユーザー
 
-Linux では `apt-get`、macOS では Homebrew を使って依存パッケージを導入します。対応する package manager が無い場合、パッケージ導入は警告してスキップされます。
+Linux では `apt-get` / `dnf` / `yum`、macOS では Homebrew を使って依存パッケージを導入します。対応する package manager が無い場合、パッケージ導入は警告してスキップされます。
 
 ## インストール
 
@@ -44,7 +45,7 @@ Options:
   --link          symlink で配置する。デフォルト
   --copy          実体コピーで配置する
   --dry-run       変更内容だけ表示する
-  --no-deps       apt / brew / starship / zoxide / zsh plugin を入れない
+  --no-deps       apt / dnf / yum / brew / starship / zoxide / zsh plugin を入れない
   --no-vim-plug   vim-plug / Vim plugin を入れない
   --no-chsh       default shell を zsh に変えない
   -h, --help      ヘルプ表示
@@ -70,7 +71,7 @@ DOTFILES_TARGET_HOME="$HOME/test-home" bash install.sh --copy --no-deps --no-chs
 
 `--no-deps` を付けない場合、次を導入します。
 
-apt / brew 共通で入るもの:
+apt / dnf / yum / brew 共通で入るもの:
 
 - `ca-certificates`
 - `curl`
@@ -78,27 +79,41 @@ apt / brew 共通で入るもの:
 - `git`
 - `vim`
 - `zsh`
-- `direnv`
-- `fzf`
 - `unzip`
-- `eza`
 
 apt のみ:
 
+- `direnv`
+- `fzf`
+- `eza`
 - `gpg`
 - `software-properties-common`
 
+dnf / yum のみ:
+
+- `vim-enhanced`
+- `gnupg2`
+
+dnf / yum で標準リポジトリにある場合だけ入るもの:
+
+- `direnv`
+- `fzf`
+- `eza`
+
 brew のみ:
 
+- `direnv`
+- `fzf`
+- `eza`
 - `gnupg`
 - `starship`
 - `zoxide`
 - `zsh-autosuggestions`
 - `zsh-syntax-highlighting`
 
-`eza` が apt 標準リポジトリに無い場合は、eza の apt repository を追加して導入します。
+`eza` が apt 標準リポジトリに無い場合は、eza の apt repository を追加して導入します。dnf / yum 環境では外部リポジトリを追加せず、標準リポジトリに無いパッケージは警告してスキップします。
 
-apt 環境で apt 以外から入るもの:
+apt / dnf / yum 環境で package manager 以外から入るもの:
 
 - `starship`
 - `zoxide`
