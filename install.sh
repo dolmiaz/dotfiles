@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 IFS=$'\n\t'
 
-MODE="link"
+MODE="copy"
 DRY_RUN=0
 INSTALL_DEPS=1
 INSTALL_VIM_PLUG=1
@@ -45,10 +45,10 @@ Usage:
   ./install.sh [options]
 
 Options:
-  --link          symlink で配置する。デフォルト
-  --copy          実体コピーで配置する
+  --copy          実体コピーで配置する。デフォルト
+  --link          symlink で配置する
   --dry-run       変更内容だけ表示する
-  --no-deps       apt / brew / starship / zoxide / zsh plugin を入れない
+  --no-deps       apt / dnf / yum / brew / VS Code / starship / zoxide / zsh plugin を入れない
   --no-vim-plug   vim-plug / Vim plugin を入れない
   --no-chsh       default shell を zsh に変えない
   -h, --help      ヘルプ表示
@@ -180,6 +180,11 @@ place_file() {
       return
     fi
 
+    if [[ "$MODE" == "copy" && ! -L "$dst" && -f "$dst" ]] && cmp -s "$src" "$dst"; then
+      log "skip: $dst already same content"
+      return
+    fi
+
     backup_existing "$dst"
   fi
 
@@ -259,6 +264,146 @@ install_apt_deps() {
   fi
 }
 
+install_apt_vscode() {
+  if have code; then
+    log "VS Code は既にあります: $(command -v code)"
+    return
+  fi
+
+  have apt-get || {
+    warn "apt-get が見つからないので VS Code 導入をスキップします"
+    return
+  }
+
+  log "VS Code をインストール中"
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    log "dry-run: Microsoft apt repository を追加して code をインストール予定"
+    return
+  fi
+
+  local tmp_key
+  local arch
+
+  tmp_key="$(mktemp)"
+  curl -fsSL https://packages.microsoft.com/keys/microsoft.asc -o "$tmp_key"
+  arch="$(dpkg --print-architecture)"
+
+  run "${SUDO[@]}" mkdir -p /etc/apt/keyrings
+  run "${SUDO[@]}" gpg --dearmor --batch --yes -o /etc/apt/keyrings/packages.microsoft.gpg "$tmp_key"
+  rm -f "$tmp_key"
+
+  printf 'deb [arch=%s signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main\n' "$arch" |
+    "${SUDO[@]}" tee /etc/apt/sources.list.d/vscode.list >/dev/null
+
+  run "${SUDO[@]}" chmod 644 /etc/apt/keyrings/packages.microsoft.gpg /etc/apt/sources.list.d/vscode.list
+  run "${SUDO[@]}" apt-get update
+  run "${SUDO[@]}" apt-get install -y code
+}
+
+redhat_package_available() {
+  local manager="$1"
+  local pkg="$2"
+
+  if [[ "$manager" == "dnf" ]]; then
+    dnf -q list --available "$pkg" >/dev/null 2>&1 ||
+      dnf -q list --installed "$pkg" >/dev/null 2>&1
+    return
+  fi
+
+  yum -q list available "$pkg" >/dev/null 2>&1 ||
+    yum -q list installed "$pkg" >/dev/null 2>&1
+}
+
+install_redhat_optional_pkg() {
+  local manager="$1"
+  local pkg="$2"
+
+  if have "$pkg"; then
+    return
+  fi
+
+  if redhat_package_available "$manager" "$pkg"; then
+    run "${SUDO[@]}" "$manager" install -y "$pkg"
+  else
+    warn "$pkg は $manager の標準リポジトリに見つからないのでスキップします"
+  fi
+}
+
+install_redhat_deps() {
+  local manager
+
+  if have dnf; then
+    manager="dnf"
+  elif have yum; then
+    manager="yum"
+  else
+    warn "dnf / yum が見つからないので Red Hat 系パッケージ導入をスキップします"
+    return
+  fi
+
+  log "$manager パッケージをインストール中"
+
+  run "${SUDO[@]}" "$manager" install -y \
+    ca-certificates \
+    curl \
+    wget \
+    git \
+    vim-enhanced \
+    zsh \
+    gnupg2 \
+    unzip
+
+  install_redhat_optional_pkg "$manager" direnv
+  install_redhat_optional_pkg "$manager" fzf
+  install_redhat_optional_pkg "$manager" eza
+}
+
+install_redhat_vscode() {
+  local manager
+
+  if have code; then
+    log "VS Code は既にあります: $(command -v code)"
+    return
+  fi
+
+  if have dnf; then
+    manager="dnf"
+  elif have yum; then
+    manager="yum"
+  else
+    warn "dnf / yum が見つからないので VS Code 導入をスキップします"
+    return
+  fi
+
+  have rpm || {
+    warn "rpm が見つからないので VS Code 導入をスキップします"
+    return
+  }
+
+  log "VS Code をインストール中"
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    log "dry-run: Microsoft rpm repository を追加して code をインストール予定"
+    return
+  fi
+
+  run "${SUDO[@]}" rpm --import https://packages.microsoft.com/keys/microsoft.asc
+  run "${SUDO[@]}" mkdir -p /etc/yum.repos.d
+
+  printf '%s\n' \
+    '[code]' \
+    'name=Visual Studio Code' \
+    'baseurl=https://packages.microsoft.com/yumrepos/vscode' \
+    'enabled=1' \
+    'gpgcheck=1' \
+    'gpgkey=https://packages.microsoft.com/keys/microsoft.asc' |
+    "${SUDO[@]}" tee /etc/yum.repos.d/vscode.repo >/dev/null
+
+  run "${SUDO[@]}" "$manager" makecache
+  run "${SUDO[@]}" "$manager" install -y code
+}
+
 setup_homebrew_path() {
   have brew && return
 
@@ -297,14 +442,39 @@ install_brew_deps() {
     zsh-syntax-highlighting
 }
 
+install_brew_vscode() {
+  setup_homebrew_path
+
+  if have code; then
+    log "VS Code は既にあります: $(command -v code)"
+    return
+  fi
+
+  have brew || {
+    warn "Homebrew が見つからないので VS Code 導入をスキップします"
+    return
+  }
+
+  log "VS Code をインストール中"
+  run brew install --cask visual-studio-code
+}
+
 install_deps() {
   if have apt-get; then
     install_apt_deps
+    install_apt_vscode
+    return
+  fi
+
+  if have dnf || have yum; then
+    install_redhat_deps
+    install_redhat_vscode
     return
   fi
 
   if [[ "$OS_NAME" == "Darwin" ]]; then
     install_brew_deps
+    install_brew_vscode
     return
   fi
 
@@ -499,6 +669,7 @@ verify() {
     command -v zoxide || true
     command -v direnv || true
     command -v eza || true
+    command -v code || true
     type ls || true
   ' || true
 }
